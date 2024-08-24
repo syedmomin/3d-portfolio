@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, ElementRef, ViewChild } from '@angular/core';
+import { Component, ElementRef, ViewChild, AfterViewInit } from '@angular/core';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
@@ -8,54 +8,52 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
   styleUrls: ['./app.component.scss'],
   standalone: true
 })
-export class AppComponent implements OnInit, OnDestroy {
-  @ViewChild('canvas', { static: true }) canvasRef!: ElementRef<HTMLCanvasElement>;
-  private renderer: THREE.WebGLRenderer | undefined;
-  private scene: THREE.Scene | undefined;
-  private camera: THREE.PerspectiveCamera | undefined;
+export class AppComponent implements AfterViewInit {
+  @ViewChild('canvas') private canvasRef!: ElementRef<HTMLCanvasElement>;
+  private scene!: THREE.Scene;
+  private camera!: THREE.PerspectiveCamera;
 
-  constructor(private el: ElementRef) { }
+  constructor() { }
 
-  ngOnInit(): void {
-    this.initThree();
+  ngAfterViewInit(): void {
+    this.initializeScene();
     this.loadModel();
   }
 
-  ngOnDestroy(): void {
-    if (this.renderer) {
-      this.renderer.dispose();
-    }
-  }
-
-  private initThree(): void {
-    const canvas = this.canvasRef.nativeElement;
-
-    this.renderer = new THREE.WebGLRenderer({ canvas });
-    this.renderer.setSize(canvas.clientWidth, canvas.clientHeight);
-
+  private initializeScene(): void {
     this.scene = new THREE.Scene();
-    this.camera = new THREE.PerspectiveCamera(75, canvas.clientWidth / canvas.clientHeight, 0.1, 1000);
-    this.camera.position.z = 5;
+    const canvas = this.canvasRef.nativeElement;
+    const aspectRatio = canvas.clientWidth / canvas.clientHeight;
 
-    // Add basic lighting
-    const ambientLight = new THREE.AmbientLight(0x404040);
-    this.scene.add(ambientLight);
+    this.camera = new THREE.PerspectiveCamera(50, aspectRatio, 0.1, 1000);
+    this.camera.position.set(0, 2, 15);
+    this.camera.lookAt(new THREE.Vector3(0, 2, 0));
 
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
-    directionalLight.position.set(1, 1, 1).normalize();
-    this.scene.add(directionalLight);
+    // Initialize Lights
+    this.scene.add(new THREE.AmbientLight(0xffffff, 2.5));
   }
 
-  private loadModel(): void {
-    if (this.renderer && this.scene) {
-      const loader = new GLTFLoader();
-      loader.load('assets/gaming.glb', (gltf) => {
-        console.log(gltf.scene);
-        
-        this.scene!.add(gltf.scene);
-      }, undefined, (error) => {
-        console.error('An error happened while loading the GLB model.', error);
-      });
+
+  private async loadModel(): Promise<void> {
+    const loader = new GLTFLoader();
+    try {
+      const gltf = await loader.loadAsync('./assets/model/gaming_room.glb');
+      const model = gltf.scene;
+      model.scale.set(4, 3.9, 4);
+      model.position.set(0, -5, 0);
+      model.rotation.y = -Math.PI / 3.5;
+
+      this.scene.add(model);
+      this.renderLoop();
+    } catch (error) {
+      console.error('Failed to load the model:', error);
     }
+  }
+
+  private renderLoop(): void {
+    const render = () => {
+      requestAnimationFrame(render);
+    };
+    render();
   }
 }
